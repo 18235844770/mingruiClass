@@ -1,0 +1,176 @@
+// =============================================================================
+// 3.1 数据建模约定（PostgreSQL）
+// - 主键：统一 UUID（@default(uuid())）
+// - 时间：业务表统一 created_at / updated_at（Prisma @map 映射 snake_case）
+// - 金额 / 课时：使用 Decimal，避免浮点误差；剩余课时允许为负（业务层展示高亮）
+// - 校区维度：students、operation_logs 带 campus_id；消课可通过 student_course → student 推导校区
+// - 创建人：students.created_by、course_consumptions.operator_id → users.id
+// - 软删除（3.4）：students / student_courses / operation_logs 使用 deleted_at；同校区姓名唯一见库内部分索引
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// 角色（RBAC 基础数据）
+model Role {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("roles")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  /// 登录账号（唯一；物理列名 phone 为历史兼容）
+  loginAccount String   @unique @map("phone")
+  /// 展示用名称（非登录凭证，允许重复）
+  username     String
+  passwordHash String   @map("password_hash")
+  roleId       String   @map("role_id")
+  status       String   @default("active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  userCampuses UserCampus[]
+
+  studentsCreated Student[]       @relation("StudentCreator")
+  consumptions    CourseConsumption[] @relation("ConsumptionOperator")
+  operationLogs   OperationLog[]     @relation("LogOperator")
+
+  @@index([roleId])
+  @@index([username])
+  @@map("users")
+}
+
+model Campus {
+  id        String   @id @default(uuid())
+  name      String
+  status    String   @default("active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userCampuses UserCampus[]
+  students     Student[]
+  operationLogs OperationLog[]
+
+  @@map("campuses")
+}
+
+model UserCampus {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  campusId  String   @map("campus_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campus Campus @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campusId])
+  @@index([campusId])
+  @@map("user_campuses")
+}
+
+model Student {
+  id          String    @id @default(uuid())
+  name        String
+  phone       String?
+  grade       String?
+  gender      String?
+  totalAmount Decimal   @map("total_amount") @db.Decimal(12, 2)
+  paidStatus  Boolean   @map("paid_status")
+  remark      String?
+  campusId    String    @map("campus_id")
+  createdBy   String    @map("created_by")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  campus  Campus @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  creator User   @relation("StudentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  courses StudentCourse[]
+
+  /// 同校区姓名唯一由迁移中的部分唯一索引实现：WHERE deleted_at IS NULL
+  @@index([campusId, name])
+  @@index([campusId, createdBy])
+  @@index([campusId, grade])
+  @@index([deletedAt])
+  @@map("students")
+}
+
+model StudentCourse {
+  id             String    @id @default(uuid())
+  studentId      String    @map("student_id")
+  courseName     String    @map("course_name")
+  coursePrice    Decimal   @map("course_price") @db.Decimal(12, 2)
+  paidStatus     Boolean   @default(false) @map("paid_status")
+  totalHours     Decimal   @map("total_hours") @db.Decimal(10, 2)
+  remainingHours Decimal   @map("remaining_hours") @db.Decimal(10, 2)
+  courseType     String    @map("course_type")
+  remark         String?
+  deletedAt      DateTime? @map("deleted_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  student      Student             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  consumptions CourseConsumption[]
+
+  @@index([studentId])
+  @@index([deletedAt])
+  @@map("student_courses")
+}
+
+model CourseConsumption {
+  id              String   @id @default(uuid())
+  studentCourseId String   @map("student_course_id")
+  consumedHours   Decimal  @map("consumed_hours") @db.Decimal(10, 2)
+  consumptionTime DateTime @map("consumption_time")
+  operatorId      String   @map("operator_id")
+  remark          String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  studentCourse StudentCourse @relation(fields: [studentCourseId], references: [id], onDelete: Cascade)
+  operator      User          @relation("ConsumptionOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+
+  @@index([studentCourseId])
+  @@index([consumptionTime])
+  @@index([operatorId])
+  @@map("course_consumptions")
+}
+
+model OperationLog {
+  id         String    @id @default(uuid())
+  operatorId String    @map("operator_id")
+  module     String
+  action     String
+  targetId   String?   @map("target_id")
+  detail     Json?
+  campusId   String?   @map("campus_id")
+  deletedAt  DateTime? @map("deleted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  operator User    @relation("LogOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  campus   Campus? @relation(fields: [campusId], references: [id], onDelete: SetNull)
+
+  @@index([operatorId])
+  @@index([campusId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("operation_logs")
+}

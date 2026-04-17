@@ -1,0 +1,162 @@
+### vars
+
+@baseUrl = http://localhost:3000/api
+
+@password = admin123
+
+
+
+### login admin
+
+POST {{baseUrl}}/auth/login
+
+Content-Type: application/json
+
+
+
+{
+
+  "loginAccount": "13800000001",
+
+  "password": "{{password}}"
+
+}
+
+
+
+### login owner
+
+POST {{baseUrl}}/auth/login
+
+Content-Type: application/json
+
+
+
+{
+
+  "loginAccount": "13800000003",
+
+  "password": "{{password}}"
+
+}
+
+
+
+### login sales_a
+
+POST {{baseUrl}}/auth/login
+
+Content-Type: application/json
+
+
+
+{
+
+  "loginAccount": "13900000001",
+
+  "password": "{{password}}"
+
+}
+
+
+
+### login sales_b
+
+POST {{baseUrl}}/auth/login
+
+Content-Type: application/json
+
+
+
+{
+
+  "loginAccount": "13900000002",
+
+  "password": "{{password}}"
+
+}
+
+
+
+### campuses mine (replace token)
+
+GET {{baseUrl}}/campuses/mine
+
+Authorization: Bearer <TOKEN>
+
+
+
+### students list (sales, requires campus header)
+
+GET {{baseUrl}}/students
+
+Authorization: Bearer <TOKEN>
+
+X-Campus-Id: <CAMPUS_ID>
+
+
+
+### students list without campus header (sales expect 400)
+
+GET {{baseUrl}}/students
+
+Authorization: Bearer <TOKEN>
+
+
+
+### owner read-only checks
+
+GET {{baseUrl}}/dashboard/summary
+
+Authorization: Bearer <OWNER_TOKEN>
+
+
+
+###
+
+GET {{baseUrl}}/reports
+
+Authorization: Bearer <OWNER_TOKEN>
+
+
+
+###
+
+GET {{baseUrl}}/logs
+
+Authorization: Bearer <OWNER_TOKEN>
+
+
+
+### owner denied students (expect 403)
+
+GET {{baseUrl}}/students
+
+Authorization: Bearer <OWNER_TOKEN>
+
+X-Campus-Id: <CAMPUS_ID>
+
+
+
+### admin config checks
+
+GET {{baseUrl}}/users
+
+Authorization: Bearer <ADMIN_TOKEN>
+
+
+
+###
+
+GET {{baseUrl}}/roles
+
+Authorization: Bearer <ADMIN_TOKEN>
+
+
+
+### admin denied dashboard (phase4 policy expect 403)
+
+GET {{baseUrl}}/dashboard/summary
+
+Authorization: Bearer <ADMIN_TOKEN>
+

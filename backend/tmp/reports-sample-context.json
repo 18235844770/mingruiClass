@@ -1,0 +1,33 @@
+{
+  "campusId": "d8c27e36-55af-4294-ab20-04f7cbfeb2f8",
+  "query": "?view=consumption&page=1&pageSize=20&campusId=d8c27e36-55af-4294-ab20-04f7cbfeb2f8&unitPriceSource=average&rounding=round&sortBy=consumptionTime&sortOrder=descend",
+  "summary": {
+    "activeStudents": 3,
+    "totalRemainingHours": "6.00",
+    "totalCourseHours": "10.00",
+    "totalIncome": "7000.00",
+    "unearnedCourseFee": "120.00",
+    "unearnedExplanation": {
+      "formula": "unearnedCourseFee = SUM(remainingHours * unitPrice)",
+      "unitPriceSource": "average",
+      "rounding": "round"
+    }
+  },
+  "firstRows": [
+    {
+      "consumptionId": "7ef18cf0-8bfb-44cf-8371-7a73ab5f551c",
+      "consumptionTime": "2026-04-01T10:00:00.000Z",
+      "consumedHours": "2.00",
+      "operatorId": "8646c587-2982-4014-ac75-5ee762c7355f",
+      "studentId": "44d5c07a-b95b-448f-81a3-05399d720b25",
+      "studentName": "演示学生",
+      "courseId": "a42ec001-d833-41ca-9208-ef33541b43ab",
+      "courseName": "演示课程",
+      "courseType": "1v1",
+      "campusId": "d8c27e36-55af-4294-ab20-04f7cbfeb2f8",
+      "salesId": "8646c587-2982-4014-ac75-5ee762c7355f",
+      "remainingHoursAfter": "6.00"
+    }
+  ],
+  "exportedPdfBytes": 1901
+}

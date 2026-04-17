@@ -1,0 +1,22 @@
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+}
+
+/* 表单项之间留出纵向间距（含 inline 换行时） */
+.ant-form-item {
+  margin-bottom: 16px;
+}
