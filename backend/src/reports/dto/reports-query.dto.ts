@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   Min,
 } from 'class-validator';
@@ -37,16 +38,30 @@ export class ReportsQueryDto {
   pageSize?: number = 10;
 
   @IsOptional()
-  @Transform(({ value }) =>
-    value === '' || value === null || value === undefined ? undefined : value,
-  )
+  @Transform(({ value }: { value: unknown }): string | undefined => {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
   @IsUUID()
   campusId?: string;
 
   @IsOptional()
-  @Transform(({ value }) =>
-    value === '' || value === null || value === undefined ? undefined : value,
-  )
+  @Transform(({ value }: { value: unknown }): string | undefined => {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
   @IsUUID()
   salesId?: string;
 
@@ -61,6 +76,21 @@ export class ReportsQueryDto {
   @IsOptional()
   @IsDateString()
   endTime?: string;
+
+  /** 按自然月筛选（UTC），格式 YYYY-MM；与 startTime/endTime 同时传时以本字段为准 */
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }): string | undefined => {
+    if (value === null || value === undefined) {
+      return undefined;
+    }
+    if (typeof value !== 'string') {
+      return undefined;
+    }
+    const trimmed = value.trim();
+    return trimmed === '' ? undefined : trimmed;
+  })
+  @Matches(/^\d{4}-(0[1-9]|1[0-2])$/, { message: 'month 须为 YYYY-MM' })
+  month?: string;
 
   @IsOptional()
   @Type(() => String)

@@ -3,6 +3,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ROLE_ADMIN } from '../common/constants/role-codes';
+import { SUPER_ADMIN_LOGIN_ACCOUNT } from '../common/constants/super-admin';
 import { UsersService } from './users.service';
 
 describe('UsersService remove rules', () => {
@@ -45,7 +46,7 @@ describe('UsersService remove rules', () => {
   it('rejects deleting super admin login account', async () => {
     prisma.user.findUnique.mockResolvedValueOnce({
       id: 'u-sa',
-      loginAccount: '13800000001',
+      loginAccount: SUPER_ADMIN_LOGIN_ACCOUNT,
       username: '管理员',
       status: 'active',
       role: { code: ROLE_ADMIN },
@@ -89,5 +90,48 @@ describe('UsersService remove rules', () => {
     expect(result).toEqual({ success: true });
     expect(prisma.user.delete).toHaveBeenCalledWith({ where: { id: 'u-4' } });
     expect(operationLogs.create).toHaveBeenCalled();
+  });
+});
+
+describe('UsersService update rules', () => {
+  const prisma = {
+    user: {
+      findUnique: jest.fn(),
+      findFirst: jest.fn(),
+    },
+    role: {
+      findUnique: jest.fn(),
+    },
+    campus: {
+      count: jest.fn(),
+    },
+    $transaction: jest.fn(),
+  };
+  const operationLogs = {
+    create: jest.fn(),
+  };
+
+  const service = new UsersService(prisma as never, operationLogs as never);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('rejects role change for seed super admin', async () => {
+    prisma.user.findUnique.mockResolvedValueOnce({
+      id: 'u-sa',
+      loginAccount: SUPER_ADMIN_LOGIN_ACCOUNT,
+      roleId: 'role-admin-id',
+      username: '管理员',
+      status: 'active',
+      role: { code: ROLE_ADMIN },
+      userCampuses: [{ campusId: 'c1' }],
+    });
+
+    await expect(
+      service.update('u-sa', 'op-1', { roleId: 'role-sales-id' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

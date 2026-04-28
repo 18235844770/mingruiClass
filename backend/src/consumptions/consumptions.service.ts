@@ -7,6 +7,7 @@ import {
 import { Prisma } from '@prisma/client';
 import { ListConsumptionsQueryDto } from './dto/list-consumptions-query.dto';
 import { CreateConsumptionDto } from './dto/create-consumption.dto';
+import { mapConsumptionIdToRemainingAfter } from './consumption-remaining-after.util';
 import { PrismaService } from '../prisma/prisma.service';
 
 type RequestUser = {
@@ -195,24 +196,46 @@ export class ConsumptionsService {
       this.prisma.courseConsumption.count({ where }),
     ]);
 
+    const courseIds = [...new Set(rows.map((r) => r.studentCourseId))];
+    const timelineRows =
+      courseIds.length === 0
+        ? []
+        : await this.prisma.courseConsumption.findMany({
+            where: { studentCourseId: { in: courseIds } },
+            select: {
+              id: true,
+              studentCourseId: true,
+              consumedHours: true,
+              consumptionTime: true,
+              createdAt: true,
+            },
+          });
+    const remainingByConsumptionId = mapConsumptionIdToRemainingAfter(
+      rows,
+      timelineRows,
+    );
+
     return {
-      data: rows.map((row) => ({
-        id: row.id,
-        studentId: row.studentCourse.student.id,
-        studentName: row.studentCourse.student.name,
-        studentGrade: row.studentCourse.student.grade,
-        studentCourseId: row.studentCourseId,
-        courseName: row.studentCourse.courseName,
-        consumedHours: row.consumedHours.toString(),
-        consumptionTime: row.consumptionTime,
-        operatorId: row.operatorId,
-        operatorName: row.operator.username,
-        remark: row.remark,
-        createdAt: row.createdAt,
-        remainingHoursAfter: row.studentCourse.remainingHours.toString(),
-        isLowHours: row.studentCourse.remainingHours.lessThan(3),
-        isNegativeHours: row.studentCourse.remainingHours.lessThan(0),
-      })),
+      data: rows.map((row) => {
+        const remainingAfter = remainingByConsumptionId.get(row.id)!;
+        return {
+          id: row.id,
+          studentId: row.studentCourse.student.id,
+          studentName: row.studentCourse.student.name,
+          studentGrade: row.studentCourse.student.grade,
+          studentCourseId: row.studentCourseId,
+          courseName: row.studentCourse.courseName,
+          consumedHours: row.consumedHours.toString(),
+          consumptionTime: row.consumptionTime,
+          operatorId: row.operatorId,
+          operatorName: row.operator?.username ?? '-',
+          remark: row.remark,
+          createdAt: row.createdAt,
+          remainingHoursAfter: remainingAfter.toString(),
+          isLowHours: remainingAfter.lessThan(3),
+          isNegativeHours: remainingAfter.lessThan(0),
+        };
+      }),
       total,
       page,
       pageSize,

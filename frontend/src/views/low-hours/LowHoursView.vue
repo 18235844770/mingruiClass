@@ -113,7 +113,7 @@ type StudentRow = {
   totalAmount: string;
   paidStatus: boolean;
   campusId: string;
-  createdBy: string;
+  createdBy: string | null;
   updatedAt: string;
   remainingHours: string;
   isLowHours: boolean;

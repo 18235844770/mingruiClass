@@ -296,7 +296,7 @@ type StudentRow = {
   paidStatus: boolean;
   remark: string | null;
   campusId: string;
-  createdBy: string;
+  createdBy: string | null;
   createdAt: string;
   updatedAt: string;
   remainingHours: string;

@@ -124,7 +124,19 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="角色" required>
-              <a-select v-model:value="form.roleId" :options="roleOptions" placeholder="请选择角色" />
+              <a-select
+                v-model:value="form.roleId"
+                :options="roleOptions"
+                placeholder="请选择角色"
+                :disabled="editingSuperAdmin"
+              />
+              <a-typography-text
+                v-if="editingSuperAdmin"
+                type="secondary"
+                style="display: block; margin-top: 4px"
+              >
+                超级管理员账号的角色不可修改
+              </a-typography-text>
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -211,6 +223,8 @@ const loading = ref(false);
 const saving = ref(false);
 const modalOpen = ref(false);
 const editingId = ref<string | null>(null);
+/** 打开编辑时是否为种子超级管理员，用于锁定角色（不随表单内登录账号改动而误判） */
+const editingSuperAdmin = ref(false);
 
 const tableData = ref<UserRow[]>([]);
 const total = ref(0);
@@ -328,6 +342,7 @@ function onTableChange(next: TablePaginationConfig) {
 
 function openCreate() {
   editingId.value = null;
+  editingSuperAdmin.value = false;
   form.loginAccount = '';
   form.username = '';
   form.roleId = undefined;
@@ -339,6 +354,7 @@ function openCreate() {
 
 function openEdit(record: UserRow) {
   editingId.value = record.id;
+  editingSuperAdmin.value = record.loginAccount === SUPER_ADMIN_LOGIN_ACCOUNT;
   form.loginAccount = record.loginAccount;
   form.username = record.username;
   form.roleId = record.roleId;
@@ -369,14 +385,17 @@ async function onSave() {
   saving.value = true;
   try {
     if (editingId.value) {
-      await http.patch(`/users/${editingId.value}`, {
+      const patchBody: Record<string, unknown> = {
         loginAccount,
         username: form.username.trim(),
-        roleId: form.roleId,
         status: form.status,
         password: form.password || undefined,
         campusIds: form.campusIds,
-      });
+      };
+      if (!editingSuperAdmin.value) {
+        patchBody.roleId = form.roleId;
+      }
+      await http.patch(`/users/${editingId.value}`, patchBody);
       message.success('更新成功');
     } else {
       await http.post('/users', {

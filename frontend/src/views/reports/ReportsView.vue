@@ -33,6 +33,16 @@
               style="width: 180px"
             />
           </a-form-item>
+          <a-form-item label="统计月份">
+            <a-date-picker
+              v-model:value="filters.month"
+              picker="month"
+              value-format="YYYY-MM"
+              allow-clear
+              placeholder="按学生建档月份"
+              style="width: 160px"
+            />
+          </a-form-item>
           <a-form-item label="时间范围">
             <a-range-picker
               v-model:value="filters.timeRange"
@@ -60,6 +70,9 @@
               <a-button @click="onReset">重置</a-button>
               <a-button :loading="exportingExcel" @click="onExport('excel')">导出 Excel</a-button>
               <a-button :loading="exportingPdf" @click="onExport('pdf')">导出 PDF</a-button>
+              <a-button :loading="exportingStudentExcel" @click="onExportStudentReport('excel')">
+                导出学生报表
+              </a-button>
             </a-space>
           </a-form-item>
         </a-form>
@@ -78,12 +91,20 @@
           <a-card><a-statistic title="总课时" :value="Number(summary.totalCourseHours || 0)" /></a-card>
         </a-col>
         <a-col :span="5">
-          <a-card><a-statistic title="总收入" :value="Number(summary.totalIncome || 0)" /></a-card>
+          <a-card><a-statistic title="总金额" :value="Number(summary.totalIncome || 0)" /></a-card>
         </a-col>
         <a-col :span="5">
           <a-card>
             <a-statistic title="未收入课时费用" :value="Number(summary.unearnedCourseFee || 0)" />
           </a-card>
+        </a-col>
+      </a-row>
+      <a-row :gutter="16" style="margin-top: 8px">
+        <a-col :span="6">
+          <a-card><a-statistic title="已收费" :value="Number(summary.paidTotalAmount || 0)" /></a-card>
+        </a-col>
+        <a-col :span="6">
+          <a-card><a-statistic title="未收费" :value="Number(summary.unpaidTotalAmount || 0)" /></a-card>
         </a-col>
       </a-row>
 
@@ -121,6 +142,8 @@ type ReportsSummary = {
   totalRemainingHours: string;
   totalCourseHours: string;
   totalIncome: string;
+  paidTotalAmount: string;
+  unpaidTotalAmount: string;
   unearnedCourseFee: string;
 };
 
@@ -143,6 +166,7 @@ const route = useRoute();
 const loading = ref(false);
 const exportingExcel = ref(false);
 const exportingPdf = ref(false);
+const exportingStudentExcel = ref(false);
 const rows = ref<Array<Record<string, unknown>>>([]);
 const total = ref(0);
 const page = ref(1);
@@ -159,6 +183,8 @@ const summary = reactive<ReportsSummary>({
   totalRemainingHours: '0.00',
   totalCourseHours: '0.00',
   totalIncome: '0.00',
+  paidTotalAmount: '0.00',
+  unpaidTotalAmount: '0.00',
   unearnedCourseFee: '0.00',
 });
 
@@ -167,6 +193,7 @@ const filters = reactive({
   campusId: undefined as string | undefined,
   salesId: undefined as string | undefined,
   courseType: undefined as string | undefined,
+  month: undefined as string | undefined,
   timeRange: [] as string[],
   unitPriceSource: 'average',
   rounding: 'round',
@@ -206,10 +233,10 @@ const columns = computed(() => {
     return [
       { title: '学生', key: 'studentName', dataIndex: 'studentName', sorter: true },
       { title: '手机号', key: 'phone', dataIndex: 'phone' },
-      { title: '总收入', key: 'totalIncome', dataIndex: 'totalIncome', sorter: true },
+      { title: '总金额', key: 'totalIncome', dataIndex: 'totalIncome', sorter: true },
       { title: '总课时', key: 'totalCourseHours', dataIndex: 'totalCourseHours' },
       { title: '剩余课时', key: 'totalRemainingHours', dataIndex: 'totalRemainingHours' },
-      { title: '状态', key: 'paidStatus', dataIndex: 'paidStatus' },
+      { title: '收费状态', key: 'paidStatus', dataIndex: 'paidStatus' },
       { title: '创建时间', key: 'createdAt', dataIndex: 'createdAt', sorter: true },
     ];
   }
@@ -260,6 +287,7 @@ function applyRoutePreset() {
   const start = parseQuery(route.query.startTime);
   const end = parseQuery(route.query.endTime);
   filters.timeRange = [start, end].filter(Boolean) as string[];
+  filters.month = parseQuery(route.query.month);
   filters.unitPriceSource = parseQuery(route.query.unitPriceSource) || 'average';
   filters.rounding = parseQuery(route.query.rounding) || 'round';
 }
@@ -284,8 +312,9 @@ async function fetchReports() {
         campusId: filters.campusId,
         salesId: filters.salesId,
         courseType: filters.courseType,
-        startTime: filters.timeRange[0] || undefined,
-        endTime: filters.timeRange[1] || undefined,
+        month: filters.month || undefined,
+        startTime: filters.month ? undefined : filters.timeRange[0] || undefined,
+        endTime: filters.month ? undefined : filters.timeRange[1] || undefined,
         unitPriceSource: filters.unitPriceSource,
         rounding: filters.rounding,
         sortBy: filters.sortBy,
@@ -313,6 +342,7 @@ function onReset() {
   filters.campusId = undefined;
   filters.salesId = undefined;
   filters.courseType = undefined;
+  filters.month = undefined;
   filters.timeRange = [];
   filters.unitPriceSource = 'average';
   filters.rounding = 'round';
@@ -345,8 +375,9 @@ async function onExport(format: 'excel' | 'pdf') {
         campusId: filters.campusId,
         salesId: filters.salesId,
         courseType: filters.courseType,
-        startTime: filters.timeRange[0] || undefined,
-        endTime: filters.timeRange[1] || undefined,
+        month: filters.month || undefined,
+        startTime: filters.month ? undefined : filters.timeRange[0] || undefined,
+        endTime: filters.month ? undefined : filters.timeRange[1] || undefined,
         unitPriceSource: filters.unitPriceSource,
         rounding: filters.rounding,
         sortBy: filters.sortBy,
@@ -363,7 +394,13 @@ async function onExport(format: 'excel' | 'pdf') {
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
     el.href = url;
-    el.download = format === 'excel' ? 'reports-export.xlsx' : 'reports-export.pdf';
+    const baseName =
+      filters.view === 'student'
+        ? filters.month
+          ? `student-report-${filters.month}`
+          : 'student-report'
+        : 'reports-export';
+    el.download = `${baseName}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
     document.body.appendChild(el);
     el.click();
     document.body.removeChild(el);
@@ -373,6 +410,45 @@ async function onExport(format: 'excel' | 'pdf') {
   } finally {
     exportingExcel.value = false;
     exportingPdf.value = false;
+  }
+}
+
+async function onExportStudentReport(format: 'excel') {
+  exportingStudentExcel.value = true;
+  try {
+    const { data } = await http.get('/reports/export', {
+      params: {
+        format,
+        view: 'student',
+        campusId: filters.campusId,
+        salesId: filters.salesId,
+        courseType: filters.courseType,
+        month: filters.month || undefined,
+        startTime: filters.month ? undefined : filters.timeRange[0] || undefined,
+        endTime: filters.month ? undefined : filters.timeRange[1] || undefined,
+        unitPriceSource: filters.unitPriceSource,
+        rounding: filters.rounding,
+        sortBy: 'createdAt',
+        sortOrder: 'descend',
+      },
+      responseType: 'blob',
+    });
+    const blob = new Blob([data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url = URL.createObjectURL(blob);
+    const el = document.createElement('a');
+    el.href = url;
+    const base = filters.month ? `student-report-${filters.month}` : 'student-report';
+    el.download = `${base}.xlsx`;
+    document.body.appendChild(el);
+    el.click();
+    document.body.removeChild(el);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    message.error(extractErrorMessage(error, '导出失败'));
+  } finally {
+    exportingStudentExcel.value = false;
   }
 }
 

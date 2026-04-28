@@ -18,9 +18,12 @@
           />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" block :disabled="!selected" :loading="submitting" @click="onSubmit">
-            进入系统
-          </a-button>
+          <a-space direction="vertical" style="width: 100%" :size="8">
+            <a-button type="primary" block :disabled="!selected" :loading="submitting" @click="onSubmit">
+              进入系统
+            </a-button>
+            <a-button block @click="goBackToLogin">返回上一步</a-button>
+          </a-space>
         </a-form-item>
         <a-typography-link @click="goChangePassword">修改密码</a-typography-link>
       </a-form>
@@ -65,6 +68,11 @@ onMounted(async () => {
 
 function goChangePassword() {
   void router.push({ name: 'account-password' });
+}
+
+function goBackToLogin() {
+  auth.clear();
+  void router.replace({ name: 'login' });
 }
 
 async function onSubmit() {

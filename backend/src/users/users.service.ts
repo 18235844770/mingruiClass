@@ -146,6 +146,14 @@ export class UsersService {
       throw new NotFoundException('用户不存在');
     }
 
+    const isSeedSuperAdmin =
+      existing.loginAccount === SUPER_ADMIN_LOGIN_ACCOUNT;
+    if (isSeedSuperAdmin) {
+      if (dto.roleId !== undefined && dto.roleId !== existing.roleId) {
+        throw new BadRequestException('超级管理员角色不可修改');
+      }
+    }
+
     if (dto.roleId) {
       const role = await this.prisma.role.findUnique({
         where: { id: dto.roleId },
@@ -192,7 +200,9 @@ export class UsersService {
           ...(dto.username !== undefined
             ? { username: dto.username.trim() }
             : {}),
-          ...(dto.roleId ? { roleId: dto.roleId } : {}),
+          ...(!isSeedSuperAdmin && dto.roleId
+            ? { roleId: dto.roleId }
+            : {}),
           ...(dto.status !== undefined ? { status: dto.status.trim() } : {}),
           ...(passwordHash ? { passwordHash } : {}),
         },

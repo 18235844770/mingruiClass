@@ -66,12 +66,21 @@ function authHeaders(token) {
 }
 
 async function computeDbSummary(campusId) {
-  const [activeStudents, studentSum, courseRows] = await prisma.$transaction([
+  const [activeStudents, studentSum, paidSum, unpaidSum, courseRows] =
+    await prisma.$transaction([
     prisma.student.count({
       where: { deletedAt: null, campusId },
     }),
     prisma.student.aggregate({
       where: { deletedAt: null, campusId },
+      _sum: { totalAmount: true },
+    }),
+    prisma.student.aggregate({
+      where: { deletedAt: null, campusId, paidStatus: true },
+      _sum: { totalAmount: true },
+    }),
+    prisma.student.aggregate({
+      where: { deletedAt: null, campusId, paidStatus: false },
       _sum: { totalAmount: true },
     }),
     prisma.studentCourse.findMany({
@@ -105,6 +114,8 @@ async function computeDbSummary(campusId) {
   return {
     activeStudents,
     totalIncome: toFixed2(studentSum._sum.totalAmount),
+    paidTotalAmount: toFixed2(paidSum._sum.totalAmount),
+    unpaidTotalAmount: toFixed2(unpaidSum._sum.totalAmount),
     totalCourseHours: toFixed2(totalCourseHours),
     totalRemainingHours: toFixed2(totalRemainingHours),
     unearnedCourseFee: toFixed2(unearnedCourseFeeRaw),
@@ -141,10 +152,12 @@ async function parseExcelResult(buffer) {
   return {
     summary: {
       activeStudents: Number(readValue(2)),
-      totalRemainingHours: readValue(3),
-      totalCourseHours: readValue(4),
-      totalIncome: readValue(5),
-      unearnedCourseFee: readValue(6),
+      totalCourseHours: readValue(3),
+      totalIncome: readValue(4),
+      paidTotalAmount: readValue(5),
+      unpaidTotalAmount: readValue(6),
+      totalRemainingHours: readValue(7),
+      unearnedCourseFee: readValue(8),
     },
     detailConsumptionIds: detailRows,
   };
@@ -186,6 +199,14 @@ async function main() {
     `totalIncome 不一致: api=${apiSummary.totalIncome}, db=${dbSummary.totalIncome}`,
   );
   assert(
+    apiSummary.paidTotalAmount === dbSummary.paidTotalAmount,
+    `paidTotalAmount 不一致: api=${apiSummary.paidTotalAmount}, db=${dbSummary.paidTotalAmount}`,
+  );
+  assert(
+    apiSummary.unpaidTotalAmount === dbSummary.unpaidTotalAmount,
+    `unpaidTotalAmount 不一致: api=${apiSummary.unpaidTotalAmount}, db=${dbSummary.unpaidTotalAmount}`,
+  );
+  assert(
     apiSummary.unearnedCourseFee === dbSummary.unearnedCourseFee,
     `unearnedCourseFee 不一致: api=${apiSummary.unearnedCourseFee}, db=${dbSummary.unearnedCourseFee}`,
   );
@@ -213,6 +234,14 @@ async function main() {
   assert(
     excelSummary.totalIncome === apiSummary.totalIncome,
     'Excel 汇总 totalIncome 与 API 不一致',
+  );
+  assert(
+    excelSummary.paidTotalAmount === apiSummary.paidTotalAmount,
+    'Excel 汇总 paidTotalAmount 与 API 不一致',
+  );
+  assert(
+    excelSummary.unpaidTotalAmount === apiSummary.unpaidTotalAmount,
+    'Excel 汇总 unpaidTotalAmount 与 API 不一致',
   );
   assert(
     excelSummary.unearnedCourseFee === apiSummary.unearnedCourseFee,

@@ -20,6 +20,7 @@ export class LogsService {
     });
     return logs
       .map((item) => item.operator)
+      .filter((op): op is { id: string; username: string } => op != null)
       .filter(
         (item, index, arr) => arr.findIndex((v) => v.id === item.id) === index,
       );

@@ -97,13 +97,13 @@ model Student {
   paidStatus  Boolean   @map("paid_status")
   remark      String?
   campusId    String    @map("campus_id")
-  createdBy   String    @map("created_by")
+  createdBy   String?   @map("created_by")
   deletedAt   DateTime? @map("deleted_at")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
   campus  Campus @relation(fields: [campusId], references: [id], onDelete: Restrict)
-  creator User   @relation("StudentCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  creator User?  @relation("StudentCreator", fields: [createdBy], references: [id], onDelete: SetNull)
 
   courses StudentCourse[]
 
@@ -142,13 +142,13 @@ model CourseConsumption {
   studentCourseId String   @map("student_course_id")
   consumedHours   Decimal  @map("consumed_hours") @db.Decimal(10, 2)
   consumptionTime DateTime @map("consumption_time")
-  operatorId      String   @map("operator_id")
+  operatorId      String?  @map("operator_id")
   remark          String?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   studentCourse StudentCourse @relation(fields: [studentCourseId], references: [id], onDelete: Cascade)
-  operator      User          @relation("ConsumptionOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  operator      User?         @relation("ConsumptionOperator", fields: [operatorId], references: [id], onDelete: SetNull)
 
   @@index([studentCourseId])
   @@index([consumptionTime])
@@ -158,7 +158,7 @@ model CourseConsumption {
 
 model OperationLog {
   id         String    @id @default(uuid())
-  operatorId String    @map("operator_id")
+  operatorId String?   @map("operator_id")
   module     String
   action     String
   targetId   String?   @map("target_id")
@@ -168,7 +168,7 @@ model OperationLog {
   createdAt  DateTime  @default(now()) @map("created_at")
   updatedAt  DateTime  @updatedAt @map("updated_at")
 
-  operator User    @relation("LogOperator", fields: [operatorId], references: [id], onDelete: Restrict)
+  operator User?   @relation("LogOperator", fields: [operatorId], references: [id], onDelete: SetNull)
   campus   Campus? @relation(fields: [campusId], references: [id], onDelete: SetNull)
 
   @@index([operatorId])
