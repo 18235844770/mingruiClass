@@ -8,8 +8,11 @@
 // - 软删除（3.4）：students / student_courses / operation_logs 使用 deleted_at；同校区姓名唯一见库内部分索引
 // =============================================================================
 
+// 显式指定目标，避免部分 Linux 上 `native` 选错引擎导致 `prisma generate` Segmentation fault
+// windows = 本机 Windows 开发；rhel-openssl-3.0.x = OpenCloudOS / RHEL 系、OpenSSL 3.x、x86_64 生产
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["windows", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
